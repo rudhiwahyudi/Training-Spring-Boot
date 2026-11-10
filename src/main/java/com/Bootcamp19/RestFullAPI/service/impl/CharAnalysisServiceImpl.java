@@ -1,27 +1,38 @@
 package com.Bootcamp19.RestFullAPI.service.impl;
 
 
+import com.Bootcamp19.RestFullAPI.Exception.AnalysisAlreadyExistsException;
+import com.Bootcamp19.RestFullAPI.Exception.AnalysisNotFoundException;
+import com.Bootcamp19.RestFullAPI.Exception.QuoteNotFoundException;
+import com.Bootcamp19.RestFullAPI.Exception.QuoteUnavailableException;
+import com.Bootcamp19.RestFullAPI.dto.feign.QuotePageResponse;
+import com.Bootcamp19.RestFullAPI.dto.feign.QuoteResponse;
 import com.Bootcamp19.RestFullAPI.dto.request.CharAnalysisRequest;
-import com.Bootcamp19.RestFullAPI.dto.response.BaseResponse;
 import com.Bootcamp19.RestFullAPI.dto.response.CharAnalysisResponse;
 import com.Bootcamp19.RestFullAPI.entity.CharAnalysis;
 import com.Bootcamp19.RestFullAPI.repository.CharAnalysisRepository;
+import com.Bootcamp19.RestFullAPI.rest.QuoteClient;
 import com.Bootcamp19.RestFullAPI.service.CharAnalysisService;
 import com.Bootcamp19.RestFullAPI.util.CharCounter;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 
 @Service
 @RequiredArgsConstructor
 public class CharAnalysisServiceImpl implements CharAnalysisService {
 
+    private static final int MAX_KALIMAT_LENGTH = 500;
+    private static final int MAX_BATCH = 10;
+    private static final int MAX_PAGE_LIMIT = 50;
+
     private final CharAnalysisRepository charAnalysisRepository;
+    private final QuoteClient client;
 
 
     @Override
@@ -43,10 +54,25 @@ public class CharAnalysisServiceImpl implements CharAnalysisService {
 
     @Override
     public CharAnalysisResponse simpan(CharAnalysisRequest request) {
-        CharCounter counter = new CharCounter(request.getKalimat());
+        String kalimat = request.getKalimat() == null ? null : request.getKalimat().trim();
+
+        if (kalimat == null || kalimat.isBlank()) {
+            throw new IllegalArgumentException("Kalimat tidak boleh kosong");
+        }
+
+        if (charAnalysisRepository.existsByKalimatIgnoreCase(kalimat)) {
+            throw new AnalysisAlreadyExistsException(kalimat);
+        }
+
+        return simpan(kalimat, null);
+    }
+
+    private CharAnalysisResponse simpan(String kalimat, String author) {
+        CharCounter counter = new CharCounter(kalimat);
 
         CharAnalysis entity = new CharAnalysis();
-        entity.setKalimat(request.getKalimat());
+        entity.setKalimat(kalimat);
+        entity.setAuthor(author);
         entity.setTotalHuruf(counter.getTotalHuruf());
         entity.setCreatedAt(LocalDateTime.now());
 
@@ -60,12 +86,10 @@ public class CharAnalysisServiceImpl implements CharAnalysisService {
     }
 
     @Override
-    public BaseResponse<CharAnalysisResponse> detail(Long id) {
-        Optional<CharAnalysis> data = charAnalysisRepository.findById(id);
-        if(data.isEmpty()) {
-            return BaseResponse.error("Data dengan id " + id + " tidak ditemukan");
-        }
-        return BaseResponse.ok(toResponse(data.get()));
+    public CharAnalysisResponse detail(Long id) {
+        CharAnalysis data = charAnalysisRepository.findById(id)
+                .orElseThrow(() -> new AnalysisNotFoundException(id));
+        return toResponse(data);
     }
 
     @Override
@@ -80,6 +104,96 @@ public class CharAnalysisServiceImpl implements CharAnalysisService {
         return charAnalysisRepository.findTerbaru().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    public CharAnalysisResponse analisaDataQuote() {
+        QuoteResponse quote;
+        try {
+            quote = client.getQuote();
+        } catch (FeignException feignException) {
+            throw new QuoteUnavailableException("Gagal mengambil quote dari layanan eksternal");
+        }
+
+        return simpanClient(quote);
+    }
+
+    @Override
+    public CharAnalysisResponse analisaQuoteById(Long id) {
+        if (id == null || id < 1) {
+            throw new IllegalArgumentException("Id quote minimal 1");
+        }
+
+        QuoteResponse quote;
+        try {
+            quote = client.getQuoteById(id);
+        } catch (FeignException.NotFound notFoundException) {
+            throw new QuoteNotFoundException(id);
+        } catch (FeignException feignException) {
+            throw new QuoteUnavailableException("Gagal mengambil quote dari layanan eksternal");
+        }
+
+        return simpanClient(quote);
+    }
+
+    @Override
+    public List<CharAnalysisResponse> analisaQuoteBatch(int jumlah) {
+        if (jumlah < 1 || jumlah > MAX_BATCH) {
+            throw new IllegalArgumentException("Jumlah quote harus antara 1 sampai " + MAX_BATCH);
+        }
+
+        List<QuoteResponse> quotes;
+        try {
+            quotes = client.getRandomQuotes(jumlah);
+        } catch (FeignException feignException) {
+            throw new QuoteUnavailableException("Gagal mengambil quote dari layanan eksternal");
+        }
+
+        return simpanSemua(quotes);
+    }
+
+    @Override
+    public List<CharAnalysisResponse> analisaQuotePage(int limit, int skip) {
+        if (limit < 1 || limit > MAX_PAGE_LIMIT) {
+            throw new IllegalArgumentException("Limit harus antara 1 sampai " + MAX_PAGE_LIMIT);
+        }
+        if (skip < 0) {
+            throw new IllegalArgumentException("Skip tidak boleh negatif");
+        }
+
+        QuotePageResponse page;
+        try {
+            page = client.getQuotes(limit, skip);
+        } catch (FeignException feignException) {
+            throw new QuoteUnavailableException("Gagal mengambil quote dari layanan eksternal");
+        }
+
+        if (page == null || page.getQuotes() == null) {
+            throw new QuoteUnavailableException("Daftar quote dari layanan eksternal kosong");
+        }
+
+        return simpanSemua(page.getQuotes());
+    }
+
+    private List<CharAnalysisResponse> simpanSemua(List<QuoteResponse> quotes) {
+        List<CharAnalysisResponse> hasil = new ArrayList<>();
+        for (QuoteResponse quote : quotes) {
+            hasil.add(simpanClient(quote));
+        }
+        return hasil;
+    }
+
+    private CharAnalysisResponse simpanClient(QuoteResponse quote) {
+        if (quote == null || quote.getQuote() == null || quote.getQuote().isBlank()) {
+            throw new QuoteUnavailableException("Quote yang diterima dari layanan eksternal kosong");
+        }
+
+        String kalimat = quote.getQuote().trim();
+        if (kalimat.length() > MAX_KALIMAT_LENGTH) {
+            throw new QuoteUnavailableException("Quote dari layanan eksternal melebihi " + MAX_KALIMAT_LENGTH + " karakter");
+        }
+
+        return simpan(kalimat, quote.getAuthor());
     }
 
 

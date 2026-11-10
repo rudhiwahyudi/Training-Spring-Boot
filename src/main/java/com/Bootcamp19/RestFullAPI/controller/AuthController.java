@@ -3,6 +3,7 @@ package com.Bootcamp19.RestFullAPI.controller;
 import com.Bootcamp19.RestFullAPI.dto.request.LoginRequest;
 import com.Bootcamp19.RestFullAPI.dto.response.LoginResponse;
 import com.Bootcamp19.RestFullAPI.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +22,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         if (authService.authenticate(request.username(), request.password())) {
             LoginResponse response = new LoginResponse(true, "Login success", request.username());
             return ResponseEntity.ok(response);

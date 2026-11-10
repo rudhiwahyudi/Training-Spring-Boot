@@ -9,10 +9,9 @@ public class CharCounter {
     private final int[] freq = new int[26];
 
     public CharCounter(String kalimat) {
-        this.kalimat = kalimat;
-        for (char c : kalimat.toLowerCase().toCharArray()) {
+        this.kalimat = kalimat == null ? "" : kalimat;
+        for (char c : this.kalimat.toLowerCase().toCharArray()) {
             if (c < 'a' || c > 'z') continue;
-            ;
             freq[c - 'a']++;
         }
     }
