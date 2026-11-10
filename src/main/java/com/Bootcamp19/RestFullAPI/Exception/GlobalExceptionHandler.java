@@ -5,12 +5,16 @@ import com.Bootcamp19.RestFullAPI.dto.response.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +67,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<BaseResponse<Object>> handleMissingParameter(MissingServletRequestParameterException exception) {
         return new ResponseEntity<>(BaseResponse.error("Parameter '" + exception.getParameterName() + "' wajib diisi"), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<BaseResponse<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException exception) {
+        return new ResponseEntity<>(BaseResponse.error("Method '" + exception.getMethod() + "' tidak didukung untuk endpoint ini"), HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<BaseResponse<Object>> handleNoResource(NoResourceFoundException exception) {
+        return new ResponseEntity<>(BaseResponse.error("Endpoint tidak ditemukan"), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<BaseResponse<Object>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException exception) {
+        return new ResponseEntity<>(BaseResponse.error("Content-Type tidak didukung"), HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<BaseResponse<Object>> handleMessageNotReadable(HttpMessageNotReadableException exception) {
+        return new ResponseEntity<>(BaseResponse.error("Body request tidak valid"), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)

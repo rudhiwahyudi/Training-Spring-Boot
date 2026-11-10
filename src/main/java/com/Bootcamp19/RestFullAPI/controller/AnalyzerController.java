@@ -34,7 +34,7 @@ public class AnalyzerController {
         return BaseResponse.ok(charAnalysisService.simpan(request));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public BaseResponse<CharAnalysisResponse> detail(@PathVariable Long id)
     {
         return BaseResponse.ok(charAnalysisService.detail(id));
