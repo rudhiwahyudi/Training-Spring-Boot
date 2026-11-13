@@ -13,16 +13,21 @@ import com.Bootcamp19.RestFullAPI.entity.CharAnalysis;
 import com.Bootcamp19.RestFullAPI.repository.CharAnalysisRepository;
 import com.Bootcamp19.RestFullAPI.rest.QuoteClient;
 import com.Bootcamp19.RestFullAPI.service.CharAnalysisService;
+import com.Bootcamp19.RestFullAPI.service.QuoteAsyncService;
+import com.Bootcamp19.RestFullAPI.service.RiwayatService;
 import com.Bootcamp19.RestFullAPI.util.CharCounter;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CharAnalysisServiceImpl implements CharAnalysisService {
@@ -33,6 +38,8 @@ public class CharAnalysisServiceImpl implements CharAnalysisService {
 
     private final CharAnalysisRepository charAnalysisRepository;
     private final QuoteClient client;
+    private final RiwayatService riwayatService;
+    private final QuoteAsyncService quoteAsyncService;
 
 
     @Override
@@ -77,6 +84,10 @@ public class CharAnalysisServiceImpl implements CharAnalysisService {
         entity.setCreatedAt(LocalDateTime.now());
 
         CharAnalysis saved = charAnalysisRepository.save(entity);
+
+        riwayatService.catatanRiwayat(entity.getId(), kalimat);
+        log.info("[{}] mulai catat riwayat id={}", Thread.currentThread().getName());
+
         return toResponse(saved);
     }
 
@@ -173,6 +184,25 @@ public class CharAnalysisServiceImpl implements CharAnalysisService {
         }
 
         return simpanSemua(page.getQuotes());
+    }
+
+    @Override
+    public List<CharAnalysisResponse> analysisDoubleQuote() {
+        Long mulai = System.currentTimeMillis();
+        CompletableFuture<QuoteResponse> quote1 = quoteAsyncService.getQuote();
+        CompletableFuture<QuoteResponse> quote2 = quoteAsyncService.getQuote();
+
+        List<CharAnalysisResponse> hasil = new ArrayList<>();
+        try{
+            QuoteResponse hasilquote1 = quote1.join();
+            QuoteResponse hasilquote2 = quote2.join();
+            hasil.add(simpan(hasilquote1.getQuote(), hasilquote1.getAuthor()));
+            hasil.add(simpan(hasilquote2.getQuote(), hasilquote2.getAuthor()));
+        } catch (CompletionException completionException) {
+            throw new QuoteUnavailableException("Service Unavailable");
+        }
+        log.info("[{}] dua quote selesai dalam {} ms", Thread.currentThread().getName(), System.currentTimeMillis() -mulai);
+        return hasil;
     }
 
     private List<CharAnalysisResponse> simpanSemua(List<QuoteResponse> quotes) {

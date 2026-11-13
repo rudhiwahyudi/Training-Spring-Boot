@@ -2,6 +2,7 @@ package com.Bootcamp19.RestFullAPI.Exception;
 
 
 import com.Bootcamp19.RestFullAPI.dto.response.BaseResponse;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,16 @@ import java.util.List;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(UserAlreadyExistException.class)
+    public ResponseEntity<BaseResponse<Object>> handleUserAlreadyExist(UserAlreadyExistException userAlreadyExistException) {
+        return new ResponseEntity<>(BaseResponse.error(userAlreadyExistException.getMessage()), HttpStatus.UNAUTHORIZED);
+    }
+
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<BaseResponse<Object>> handleUnauthorized(UnauthorizedException unauthorizedException){
+        return new ResponseEntity<>(BaseResponse.error(unauthorizedException.getMessage()), HttpStatus.UNAUTHORIZED);
+    }
 
     @ExceptionHandler(QuoteUnavailableException.class)
     public ResponseEntity<BaseResponse<Object>> handleQuoteUnavailableException(QuoteUnavailableException quoteUnavailableException){

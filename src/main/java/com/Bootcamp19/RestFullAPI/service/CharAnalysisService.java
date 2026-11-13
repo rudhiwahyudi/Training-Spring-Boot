@@ -15,4 +15,5 @@ public interface CharAnalysisService {
     CharAnalysisResponse analisaQuoteById(Long id);
     List<CharAnalysisResponse> analisaQuoteBatch(int jumlah);
     List<CharAnalysisResponse> analisaQuotePage(int limit, int skip);
+    List<CharAnalysisResponse> analysisDoubleQuote();
 }

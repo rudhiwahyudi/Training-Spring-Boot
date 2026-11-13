@@ -1,6 +1,6 @@
 spring:
   application:
-    name: demo
+    name: analyze-service
 
   datasource:
     url: jdbc:postgresql://localhost:5432/postgres
@@ -18,14 +18,24 @@ quote:
 
 server:
   port: 8081
+  servlet:
+    context-path: /analyze
 
 app:
   auth:
     username: admin
     password: admin123
 
+jwt:
+  secret: 01666ec060466c14b9fa06c613fbac449163f2a2017558fe16526209ab78c6b0
+  expiration: 3600000
 
 
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
 
 
 

@@ -14,7 +14,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/v1/analyze")
 @RequiredArgsConstructor
 public class AnalyzerController {
     private final CharAnalysisService charAnalysisService;
@@ -70,6 +70,11 @@ public class AnalyzerController {
             @RequestParam int limit,
             @RequestParam int skip) {
         return BaseResponse.ok(charAnalysisService.analisaQuotePage(limit, skip));
+    }
+
+    @PostMapping("/from-quote/double")
+    public BaseResponse<List<CharAnalysisResponse>> fromDoubleQuote() {
+        return BaseResponse.ok(charAnalysisService.analysisDoubleQuote());
     }
 
 }
