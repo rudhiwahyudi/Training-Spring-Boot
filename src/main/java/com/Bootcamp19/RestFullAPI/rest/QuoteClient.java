@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "quoteClient", url = "${quote.api.url}")
+@FeignClient(name = "quote-service", path = "/quote")
 public interface QuoteClient {
 
     @GetMapping("/quotes/random")
